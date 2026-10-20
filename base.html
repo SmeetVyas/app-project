@@ -1,0 +1,163 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}API Sentinel — Developer API Testing & QA Platform{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  <!-- Chart.js for live metrics visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  {% if messages %}
+  <div class="toast-container" id="toastContainer">
+    {% for message in messages %}
+      <div class="toast toast-{{ message.tags }}">
+        <span>{{ message }}</span>
+        <button type="button" style="background:none; border:none; cursor:pointer; color:inherit; font-size:14px;" onclick="this.parentElement.remove()">✕</button>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="{% url 'dashboard' %}" class="sidebar-brand">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+          API Sentinel
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-label">Core Workspace</div>
+        <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          Dashboard
+        </a>
+        <a href="{% url 'project_list' %}" class="nav-link {% if 'project' in request.path and not 'switch' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 8 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+          Projects
+        </a>
+
+        <div class="nav-label">API Testing</div>
+        <a href="{% url 'request_builder' %}" class="nav-link {% if request.resolver_match.url_name == 'request_builder' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+          Request Builder
+        </a>
+        <a href="{% url 'endpoint_list' %}" class="nav-link {% if 'endpoints' in request.path and not 'builder' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
+          Endpoints
+        </a>
+        <a href="{% url 'suite_list' %}" class="nav-link {% if 'suites' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Test Suites
+        </a>
+        <a href="{% url 'history' %}" class="nav-link {% if request.resolver_match.url_name == 'history' or 'runs' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Test History
+        </a>
+        <a href="{% url 'regression_compare' %}" class="nav-link {% if request.resolver_match.url_name == 'regression_compare' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Regression Compare
+        </a>
+
+        <div class="nav-label">Monitoring & Reports</div>
+        <a href="{% url 'monitor_list' %}" class="nav-link {% if 'monitoring' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Health Monitors
+        </a>
+        <a href="{% url 'analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          QA Analytics
+        </a>
+        <a href="{% url 'api_docs' %}" class="nav-link {% if request.resolver_match.url_name == 'api_docs' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+          API Docs
+        </a>
+
+        <div class="nav-label">Platform</div>
+        <a href="{% url 'settings' %}" class="nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          Security & Settings
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span style="display:block; color:#475569; font-weight:600;">API SENTINEL v1.0</span>
+        <span style="color:#64748b;">Python 3.13 / Django 6.1</span>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <div class="main-wrapper">
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          {% if user.is_authenticated %}
+          <!-- Global Project Selector -->
+          <form method="POST" action="{% url 'switch_project' %}" class="project-selector-form">
+            {% csrf_token %}
+            <label for="project_id_selector" style="font-size:12px; color:var(--text-muted); font-weight:500;">Project:</label>
+            <select name="project_id" id="project_id_selector" class="project-select" onchange="this.form.submit()">
+              <option value="all" {% if not active_project %}selected{% endif %}>All Projects</option>
+              {% for p in user_projects %}
+                <option value="{{ p.id }}" {% if active_project and active_project.id == p.id %}selected{% endif %}>
+                  {{ p.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </form>
+          {% endif %}
+        </div>
+
+        <div class="topbar-right">
+          <!-- Dark / Light Theme Toggle -->
+          <button type="button" class="theme-toggle-btn" id="themeToggleBtn" title="Toggle Light/Dark Theme">
+            <span id="themeIcon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+            </span>
+          </button>
+
+          {% if user.is_authenticated %}
+          <div class="user-badge">
+            <div class="user-avatar">{{ user.username|make_list|first|upper }}</div>
+            <span>{{ user.username }}</span>
+          </div>
+          <a href="{% url 'logout' %}" class="btn btn-secondary btn-sm" title="Log Out">Sign Out</a>
+          {% else %}
+          <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Sign In</a>
+          <a href="{% url 'register' %}" class="btn btn-secondary btn-sm">Register</a>
+          {% endif %}
+        </div>
+      </header>
+
+      <!-- Page Content Area -->
+      <main class="page-body">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <script src="{% static 'js/app.js' %}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

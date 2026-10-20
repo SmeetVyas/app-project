@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Create Account — API Sentinel{% endblock %}
+
+{% block content %}
+<div style="max-width: 440px; margin: 40px auto;">
+  <div class="card">
+    <div class="card-header" style="justify-content: center; text-align: center; padding: 22px;">
+      <div>
+        <h2 style="font-size: 19px; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Get Started with API Sentinel</h2>
+        <p style="font-size: 13px; color: var(--text-muted);">Set up an isolated workspace for API testing and regression tracking</p>
+      </div>
+    </div>
+    <div class="card-body" style="padding: 24px;">
+      <form method="POST">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+          <div style="background-color: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px;">
+            {{ form.non_field_errors.0 }}
+          </div>
+        {% endif %}
+
+        <div class="form-group">
+          <label class="form-label" for="id_username">Username</label>
+          {{ form.username }}
+          {% if form.username.errors %}
+            <div class="form-errors">{{ form.username.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_email">Email Address</label>
+          {{ form.email }}
+          {% if form.email.errors %}
+            <div class="form-errors">{{ form.email.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_password1">Password</label>
+          <input type="password" name="password1" id="id_password1" class="form-input" required placeholder="Minimum 8 characters" />
+          {% if form.password1.errors %}
+            <div class="form-errors">{{ form.password1.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_password2">Confirm Password</label>
+          <input type="password" name="password2" id="id_password2" class="form-input" required placeholder="Repeat password" />
+          {% if form.password2.errors %}
+            <div class="form-errors">{{ form.password2.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; margin-top: 8px;">
+          Create Free Account
+        </button>
+      </form>
+
+      <div style="margin-top: 20px; text-align: center; font-size: 13px; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 16px;">
+        Already registered? <a href="{% url 'login' %}" style="font-weight: 600;">Sign in here</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

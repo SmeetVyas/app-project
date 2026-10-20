@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}API Request Playground — API Sentinel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">API Request Builder</h1>
+    <p class="page-subtitle">Interactive HTTP client with real-time SSRF validation, header inspection, and response parsing.</p>
+  </div>
+  <div class="page-actions">
+    <button type="button" class="btn btn-secondary" id="rbSaveEndpointBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save as Endpoint
+    </button>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+  <!-- Left Column: Request Configuration -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+        Outbound Request Setup
+      </h3>
+    </div>
+    <div class="card-body">
+      <!-- Method & URL Input Bar -->
+      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <select id="rbMethod" class="form-select font-mono" style="width: 110px; font-weight: 700;">
+          <option value="GET" {% if prefill.method == 'GET' %}selected{% endif %}>GET</option>
+          <option value="POST" {% if prefill.method == 'POST' %}selected{% endif %}>POST</option>
+          <option value="PUT" {% if prefill.method == 'PUT' %}selected{% endif %}>PUT</option>
+          <option value="PATCH" {% if prefill.method == 'PATCH' %}selected{% endif %}>PATCH</option>
+          <option value="DELETE" {% if prefill.method == 'DELETE' %}selected{% endif %}>DELETE</option>
+          <option value="HEAD" {% if prefill.method == 'HEAD' %}selected{% endif %}>HEAD</option>
+        </select>
+        
+        <input type="url" id="rbUrl" class="form-input font-mono" placeholder="https://api.example.com/v1/resource" value="{{ prefill.url|default:'https://jsonplaceholder.typicode.com/posts/1' }}" style="flex: 1;" required />
+        
+        <button type="button" id="rbSendBtn" class="btn btn-primary" style="padding: 0 18px; font-weight: 600;">
+          Send
+        </button>
+      </div>
+
+      <!-- Request Tabs (Params, Headers, Body) -->
+      <div class="rb-tabs-container">
+        <div class="tab-nav">
+          <button type="button" class="tab-btn active" data-tab="tabParams">Query Params</button>
+          <button type="button" class="tab-btn" data-tab="tabHeaders">Headers</button>
+          <button type="button" class="tab-btn" data-tab="tabBody">Request Body</button>
+        </div>
+
+        <!-- Params Tab -->
+        <div class="tab-pane active" id="tabParams">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-size: 12px; color: var(--text-muted);">Query Key-Value Pairs</span>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addKeyValueRow('paramsContainer')">+ Add Param</button>
+          </div>
+          <div id="paramsContainer">
+            <div class="key-value-row" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
+              <input type="text" class="form-input row-key font-mono" placeholder="Key" value="" style="flex: 1;" />
+              <input type="text" class="form-input row-val font-mono" placeholder="Value" value="" style="flex: 2;" />
+              <button type="button" class="btn btn-secondary btn-sm" onclick="this.parentElement.remove()">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Headers Tab -->
+        <div class="tab-pane" id="tabHeaders">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-size: 12px; color: var(--text-muted);">Request HTTP Headers</span>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addKeyValueRow('headersContainer')">+ Add Header</button>
+          </div>
+          <div id="headersContainer">
+            <div class="key-value-row" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
+              <input type="text" class="form-input row-key font-mono" placeholder="Header Name" value="Accept" style="flex: 1;" />
+              <input type="text" class="form-input row-val font-mono" placeholder="Header Value" value="application/json" style="flex: 2;" />
+              <button type="button" class="btn btn-secondary btn-sm" onclick="this.parentElement.remove()">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Body Tab -->
+        <div class="tab-pane" id="tabBody">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 12px; color: var(--text-muted);">JSON / Raw Body</span>
+            <button type="button" id="rbFormatJsonBtn" class="btn btn-secondary btn-sm">Format JSON</button>
+          </div>
+          <textarea id="rbBody" class="form-input font-mono" rows="8" placeholder='{\n  "title": "foo",\n  "userId": 1\n}'>{{ prefill.body }}</textarea>
+        </div>
+      </div>
+
+      <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-muted);">
+        <b>🛡️ SSRF Guard Enabled:</b> Requests to loopback (127.0.0.1, localhost), private networks (10.x, 192.168.x, 172.16.x), and cloud metadata services (169.254.169.254) are rejected before execution.
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Response Inspector -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Response Inspector
+      </h3>
+      <div id="respMetaBar" style="display: flex; gap: 8px; align-items: center;">
+        <span id="respStatusBadge" class="badge-status badge-neutral">No Request Sent</span>
+        <span id="respLatencyBadge" class="badge-status badge-neutral">0ms</span>
+        <span id="respSizeBadge" class="badge-status badge-neutral">0 B</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <!-- Empty State -->
+      <div id="respEmptyState" class="empty-state" style="padding: 60px 20px;">
+        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <h4 class="empty-state-title">Ready to Test</h4>
+        <p class="empty-state-desc">Enter an endpoint URL on the left and click "Send" to inspect the live HTTP status, latency, headers, and body.</p>
+      </div>
+
+      <!-- Loading State -->
+      <div id="respLoadingState" style="display: none; text-align: center; padding: 60px 20px;">
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Executing Outbound Request...</div>
+        <p style="font-size: 13px; color: var(--text-muted);">Validating destination IP against SSRF guard and streaming response.</p>
+      </div>
+
+      <!-- Response Content Tabs -->
+      <div id="respContainer" style="display: none;" class="resp-tabs-container">
+        <div class="tab-nav">
+          <button type="button" class="tab-btn active" data-tab="tabRespBody">Response Body</button>
+          <button type="button" class="tab-btn" data-tab="tabRespHeaders">Headers</button>
+          <div style="margin-left: auto;">
+            <button type="button" id="copyRespBtn" class="btn btn-secondary btn-sm">Copy Body</button>
+          </div>
+        </div>
+
+        <div class="tab-pane active" id="tabRespBody">
+          <pre id="respBodyViewer" class="code-block" style="min-height: 280px;"></pre>
+        </div>
+
+        <div class="tab-pane" id="tabRespHeaders">
+          <pre id="respHeadersViewer" class="code-block" style="min-height: 280px;"></pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/request_builder.js' %}"></script>
+{% endblock %}

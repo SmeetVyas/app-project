@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} — API Sentinel{% endblock %}
+
+{% block content %}
+<div style="max-width: 780px; margin: 20px auto;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">{{ title }}</h2>
+      <a href="{% url 'endpoint_list' %}" class="btn btn-secondary btn-sm">← Back to Endpoints</a>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+          <div style="background-color: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px;">
+            {{ form.non_field_errors.0 }}
+          </div>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="id_project">Project Workspace</label>
+            {{ form.project }}
+            {% if form.project.errors %}<div class="form-errors">{{ form.project.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_name">Endpoint Name</label>
+            {{ form.name }}
+            {% if form.name.errors %}<div class="form-errors">{{ form.name.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="id_method">Method</label>
+            {{ form.method }}
+            {% if form.method.errors %}<div class="form-errors">{{ form.method.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_url">Target Public URL</label>
+            {{ form.url }}
+            {% if form.url.errors %}<div class="form-errors">{{ form.url.errors.0 }}</div>{% endif %}
+            <div class="form-help">Must be a valid HTTP or HTTPS endpoint. Private, loopback, and metadata IPs are rejected by SSRF guard.</div>
+          </div>
+        </div>
+
+        <!-- Headers and Parameters -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="id_headers_text">HTTP Headers (JSON)</label>
+            {{ form.headers_text }}
+            {% if form.headers_text.errors %}<div class="form-errors">{{ form.headers_text.errors.0 }}</div>{% endif %}
+            <div class="form-help">e.g. {"Accept": "application/json"}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_params_text">Query Parameters (JSON)</label>
+            {{ form.params_text }}
+            {% if form.params_text.errors %}<div class="form-errors">{{ form.params_text.errors.0 }}</div>{% endif %}
+            <div class="form-help">e.g. {"page": "1", "status": "active"}</div>
+          </div>
+        </div>
+
+        <!-- Request Body -->
+        <div class="form-group">
+          <label class="form-label" for="id_body">Request Body (Optional, for POST/PUT/PATCH)</label>
+          {{ form.body }}
+          {% if form.body.errors %}<div class="form-errors">{{ form.body.errors.0 }}</div>{% endif %}
+          <div class="form-help">JSON object or raw payload to send with request.</div>
+        </div>
+
+        <!-- Expected Status & Timeout -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="id_expected_status_code">Expected Status Code</label>
+            {{ form.expected_status_code }}
+            {% if form.expected_status_code.errors %}<div class="form-errors">{{ form.expected_status_code.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_timeout_seconds">Timeout (Seconds)</label>
+            {{ form.timeout_seconds }}
+            {% if form.timeout_seconds.errors %}<div class="form-errors">{{ form.timeout_seconds.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+
+        <!-- Encrypted Credentials Section -->
+        <div style="background-color: var(--bg-card-header); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px; margin: 16px 0;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <h4 style="font-size: 13.5px; font-weight: 600; color: var(--text-main);">Protected Authentication & Secrets (At-Rest Encryption)</h4>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="form-group">
+              <label class="form-label" for="auth_type_select">Authentication Type</label>
+              {{ form.auth_type }}
+            </div>
+            <div class="form-group" id="headerNameGroup">
+              <label class="form-label" for="auth_header_name_input">Header Name</label>
+              {{ form.auth_header_name }}
+            </div>
+          </div>
+
+          <div class="form-group" id="secretInputGroup">
+            <label class="form-label" for="auth_secret_input">Secret / API Token</label>
+            {{ form.auth_secret }}
+            <div class="form-help">Encrypted via AES-CBC with HMAC. Never exposed in plaintext logs or reports.</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_description">Endpoint Documentation & Notes</label>
+          {{ form.description }}
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary">Save Endpoint</button>
+          <a href="{% url 'endpoint_list' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

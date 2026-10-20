@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} — API Sentinel{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 20px auto;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">{{ title }}</h2>
+      <span class="badge-status badge-neutral">{{ case.endpoint.method }} {{ case.endpoint.name }}</span>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label class="form-label" for="assertion_type_select">Assertion Type</label>
+          {{ form.assertion_type }}
+          {% if form.assertion_type.errors %}<div class="form-errors">{{ form.assertion_type.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div class="form-group" id="targetPropertyContainer">
+          <label class="form-label" for="target_property_input">Target Property / Path</label>
+          {{ form.target_property }}
+          {% if form.target_property.errors %}<div class="form-errors">{{ form.target_property.errors.0 }}</div>{% endif %}
+          <div class="form-help" id="targetHelpText">
+            For JSON assertions, use dot-notation (e.g. <code>user.profile.id</code> or <code>items[0].name</code>). For headers, specify the header key (e.g. <code>Content-Type</code>).
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="expected_value_input">Expected Value</label>
+          {{ form.expected_value }}
+          {% if form.expected_value.errors %}<div class="form-errors">{{ form.expected_value.errors.0 }}</div>{% endif %}
+          <div class="form-help" id="expectedHelpText">
+            The expected outcome: e.g. status code (200), latency threshold in ms (500), type (string/number/array), or substring.
+          </div>
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+          {{ form.is_active }}
+          <label for="id_is_active" style="font-size: 13.5px; cursor: pointer; margin: 0;">Rule is Active</label>
+        </div>
+
+        <div style="background-color: var(--bg-card-header); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--text-muted); margin: 16px 0;">
+          💡 <b>Safe Evaluation:</b> API Sentinel evaluates all assertion criteria using strict declarative parsing. User inputs are never evaluated using Python's <code>eval()</code>, <code>exec()</code>, or system shells.
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary">Save Assertion Rule</button>
+          <a href="{% url 'suite_detail' case.suite.id %}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

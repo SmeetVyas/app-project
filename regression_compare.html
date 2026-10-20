@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block title %}Regression & Performance Analyzer — API Sentinel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Regression & Performance Analyzer</h1>
+    <p class="page-subtitle">Compare two execution runs side-by-side to flag newly failing tests and significant latency spikes.</p>
+  </div>
+</div>
+
+<!-- Run Selection Form -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h3 class="card-title">Select Runs for Side-by-Side Comparison</h3>
+  </div>
+  <div class="card-body">
+    <form method="GET" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 16px; align-items: flex-end;">
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label" for="base_select">1. Baseline Run (Reference)</label>
+        <select name="base" id="base_select" class="form-select" required>
+          <option value="">-- Choose Baseline Run --</option>
+          {% for r in runs %}
+            <option value="{{ r.id }}" {% if base_id == r.id|stringformat:"s" %}selected{% endif %}>
+              Run #{{ r.id }} [{{ r.status }}] - {{ r.suite.name|default:"Direct Test" }} ({{ r.started_at|date:"M d, H:i" }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label" for="comp_select">2. Comparison Run (Latest/New)</label>
+        <select name="comp" id="comp_select" class="form-select" required>
+          <option value="">-- Choose Comparison Run --</option>
+          {% for r in runs %}
+            <option value="{{ r.id }}" {% if comp_id == r.id|stringformat:"s" %}selected{% endif %}>
+              Run #{{ r.id }} [{{ r.status }}] - {{ r.suite.name|default:"Direct Test" }} ({{ r.started_at|date:"M d, H:i" }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <button type="submit" class="btn btn-primary" style="padding: 9px 20px;">
+          Analyze Diffs
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if comparison_data %}
+
+  <!-- Regressions Alert Banner -->
+  {% if comparison_data.functional_regressions %}
+    <div style="background-color: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: var(--radius-md); padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 12px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--danger); flex-shrink: 0; margin-top: 2px;">
+        <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div>
+        <h4 style="font-size: 15px; font-weight: 700; color: var(--danger); margin-bottom: 4px;">
+          ⚠️ Functional Regressions Detected: {{ comparison_data.functional_regressions|length }} Test(s) Newly Failing!
+        </h4>
+        <p style="font-size: 13px; color: var(--text-main);">
+          The following tests previously passed in Baseline Run #{{ baseline_run.id }}, but failed in Comparison Run #{{ comparison_run.id }}:
+          <b>{{ comparison_data.functional_regressions|join:", " }}</b>
+        </p>
+      </div>
+    </div>
+  {% elif comparison_data.has_regressions %}
+    <div style="background-color: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 24px;">
+      <h4 style="font-size: 14px; font-weight: 700; color: var(--warning); margin-bottom: 2px;">
+        ⚡ Performance Degraded: Latency Increases Detected
+      </h4>
+      <p style="font-size: 13px; color: var(--text-main);">
+        No functional test assertions regressed, but significant latency degradation was measured.
+      </p>
+    </div>
+  {% else %}
+    <div style="background-color: var(--success-bg); border: 1px solid var(--success-border); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 24px;">
+      <h4 style="font-size: 14px; font-weight: 700; color: var(--success); margin-bottom: 2px;">
+        ✅ No Regressions Detected
+      </h4>
+      <p style="font-size: 13px; color: var(--text-main);">
+        All test scenarios maintained consistent or improved outcomes and latency thresholds.
+      </p>
+    </div>
+  {% endif %}
+
+  <!-- Delta Stat Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-label">Functional Regressions</span>
+      <span class="stat-value" style="color: {% if comparison_data.functional_regressions %}var(--danger){% else %}var(--success){% endif %};">
+        {{ comparison_data.functional_regressions|length }}
+      </span>
+      <span class="stat-sub">Tests broken</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Performance Spikes</span>
+      <span class="stat-value" style="color: {% if comparison_data.performance_regressions %}var(--warning){% else %}var(--text-main){% endif %};">
+        {{ comparison_data.performance_regressions|length }}
+      </span>
+      <span class="stat-sub">&gt;25% latency increase</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Pass Rate Delta</span>
+      <span class="stat-value" style="color: {% if comparison_data.pass_rate_delta > 0 %}var(--success){% elif comparison_data.pass_rate_delta < 0 %}var(--danger){% else %}var(--text-main){% endif %};">
+        {% if comparison_data.pass_rate_delta > 0 %}+{% endif %}{{ comparison_data.pass_rate_delta }}%
+      </span>
+      <span class="stat-sub">From {{ baseline_run.pass_percentage }}% to {{ comparison_run.pass_percentage }}%</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Total Duration Delta</span>
+      <span class="stat-value">
+        {% if comparison_data.duration_delta_ms > 0 %}+{% endif %}{{ comparison_data.duration_delta_ms|floatformat:1 }} <small style="font-size:13px;">ms</small>
+      </span>
+      <span class="stat-sub">({% if comparison_data.duration_delta_pct > 0 %}+{% endif %}{{ comparison_data.duration_delta_pct }}%)</span>
+    </div>
+  </div>
+
+  <!-- Detailed Side-by-Side Test Diff Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Scenario-by-Scenario Evaluation Diffs</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Scenario Name</th>
+            <th>Regression Status</th>
+            <th>Baseline #{{ baseline_run.id }}</th>
+            <th>Comparison #{{ comparison_run.id }}</th>
+            <th>Latency Shift</th>
+            <th>Analysis Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in comparison_data.diffs %}
+          <tr style="{% if d.status == 'FUNCTIONAL_REGRESSION' %}background-color: var(--danger-bg);{% elif d.status == 'FUNCTIONAL_FIX' %}background-color: var(--success-bg);{% endif %}">
+            <td><b>{{ d.name }}</b></td>
+            <td>
+              {% if d.status == 'FUNCTIONAL_REGRESSION' %}
+                <span class="badge-status badge-failed">REGRESSION</span>
+              {% elif d.status == 'FUNCTIONAL_FIX' %}
+                <span class="badge-status badge-passed">FIXED</span>
+              {% elif d.status == 'PERSISTENT_FAILURE' %}
+                <span class="badge-status badge-failed">STILL FAILING</span>
+              {% elif d.status == 'CONSISTENT_PASS' %}
+                <span class="badge-status badge-passed">PASS</span>
+              {% else %}
+                <span class="badge-status badge-neutral">{{ d.status }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if d.baseline_passed is not None %}
+                {% if d.baseline_passed %}<span style="color:var(--success);">PASS</span>{% else %}<span style="color:var(--danger);">FAIL</span>{% endif %}
+                <span class="font-mono" style="font-size:12px; color:var(--text-muted); margin-left:4px;">{{ d.baseline_latency|floatformat:1 }}ms</span>
+              {% else %}
+                <span style="color:var(--text-muted);">-</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if d.comparison_passed is not None %}
+                {% if d.comparison_passed %}<span style="color:var(--success);">PASS</span>{% else %}<span style="color:var(--danger);">FAIL</span>{% endif %}
+                <span class="font-mono" style="font-size:12px; color:var(--text-muted); margin-left:4px;">{{ d.comparison_latency|floatformat:1 }}ms</span>
+              {% else %}
+                <span style="color:var(--text-muted);">-</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if d.latency_diff_ms is not None %}
+                <span class="font-mono" style="font-weight:600; color: {% if d.is_perf_regression %}var(--danger){% elif d.is_perf_improvement %}var(--success){% else %}var(--text-main){% endif %};">
+                  {% if d.latency_diff_ms > 0 %}+{% endif %}{{ d.latency_diff_ms|floatformat:1 }}ms
+                  <small>({% if d.latency_change_pct > 0 %}+{% endif %}{{ d.latency_change_pct }}%)</small>
+                </span>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td style="font-size: 12px; color: var(--text-muted);">
+              {{ d.description }}
+              {% if d.comp_error %}
+                <div style="color:var(--danger); font-size:11.5px;">{{ d.comp_error }}</div>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% elif base_id or comp_id %}
+  <div class="card">
+    <div class="card-body empty-state">
+      <p>Please select both a Baseline Run and a Comparison Run to view regression telemetry.</p>
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block title %}{{ suite.name }} — API Sentinel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <h1 class="page-title">{{ suite.name }}</h1>
+      <span class="badge-status badge-neutral">{{ suite.project.name }}</span>
+    </div>
+    <p class="page-subtitle">{{ suite.description|default:"No description provided." }}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'testcase_create' suite.id %}" class="btn btn-secondary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Test Scenario
+    </a>
+    <a href="{% url 'suite_run' suite.id %}" class="btn btn-primary" style="font-weight: 600;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Execute Suite
+    </a>
+    <a href="{% url 'suite_update' suite.id %}" class="btn btn-secondary">Edit Suite</a>
+  </div>
+</div>
+
+<!-- Test Cases in Suite -->
+<div style="margin-bottom: 30px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+    <h2 style="font-size: 16px; font-weight: 700; color: var(--text-main);">
+      Test Cases & Assertions ({{ cases.count }})
+    </h2>
+    <a href="{% url 'testcase_create' suite.id %}" class="btn btn-secondary btn-sm">+ Add Test Case</a>
+  </div>
+
+  {% for case in cases %}
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="card-header" style="background-color: var(--bg-card-header);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); background: var(--border-color); padding: 2px 7px; border-radius: 4px;">#{{ case.order }}</span>
+        <h3 class="card-title" style="margin: 0;">{{ case.name }}</h3>
+        <span class="badge-method badge-{{ case.endpoint.method|lower }}">{{ case.endpoint.method }}</span>
+        <span class="font-mono" style="font-size: 12px; color: var(--text-muted);">{{ case.endpoint.url|truncatechars:65 }}</span>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <a href="{% url 'assertion_create' case.id %}" class="btn btn-secondary btn-sm">+ Add Rule</a>
+        <a href="{% url 'testcase_update' case.id %}" class="btn btn-secondary btn-sm">Edit</a>
+        <a href="{% url 'testcase_delete' case.id %}" class="btn btn-secondary btn-sm" style="color:var(--danger);">Remove</a>
+      </div>
+    </div>
+    <div class="card-body" style="padding: 14px 18px;">
+      <!-- Assertions List -->
+      <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">
+        Assertion Rules ({{ case.assertions.count }})
+      </div>
+
+      {% if case.assertions.exists %}
+        <div class="table-responsive">
+          <table class="table" style="font-size: 12.5px;">
+            <thead>
+              <tr style="background: none;">
+                <th>Evaluation Criteria</th>
+                <th>Target Property</th>
+                <th>Expected Value</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in case.assertions.all %}
+              <tr>
+                <td>
+                  <span class="badge-status badge-neutral">{{ a.get_assertion_type_display }}</span>
+                </td>
+                <td class="font-mono">{{ a.target_property|default:"(Direct Status/Latency)" }}</td>
+                <td class="font-mono"><b>{{ a.expected_value }}</b></td>
+                <td style="text-align: right;">
+                  <form method="POST" action="{% url 'assertion_delete' a.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 11px; color: var(--danger);" title="Remove Rule">✕</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="font-size: 12.5px; color: var(--text-muted); font-style: italic; background-color: var(--bg-card-header); padding: 8px 12px; border-radius: var(--radius-sm);">
+          No custom rules configured. Default rule: expects HTTP {{ case.endpoint.expected_status_code }}.
+          <a href="{% url 'assertion_create' case.id %}" style="font-weight: 600; margin-left: 6px;">Add custom assertion rule</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+    <div class="card">
+      <div class="card-body empty-state">
+        <h3 class="empty-state-title">Suite Has No Test Cases</h3>
+        <p class="empty-state-desc">Add test cases to this suite by binding them to endpoints and specifying assertions.</p>
+        <a href="{% url 'testcase_create' suite.id %}" class="btn btn-primary">Add First Test Case</a>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Execution History for this suite -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Suite Execution History (Last 10 Runs)
+    </h3>
+    <a href="{% url 'regression_compare' %}" class="btn btn-secondary btn-sm">Regression Analyzer</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Run ID</th>
+          <th>Status</th>
+          <th>Pass Ratio</th>
+          <th>Total Latency</th>
+          <th>Triggered By</th>
+          <th>Timestamp</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td class="font-mono">#{{ run.id }}</td>
+          <td>
+            {% if run.status == 'PASSED' %}
+              <span class="badge-status badge-passed">PASSED</span>
+            {% else %}
+              <span class="badge-status badge-failed">FAILED</span>
+            {% endif %}
+          </td>
+          <td>{{ run.pass_percentage }}% ({{ run.passed_tests }}/{{ run.total_tests }})</td>
+          <td class="font-mono">{{ run.total_duration_ms|floatformat:1 }}ms</td>
+          <td>{{ run.triggered_by.username|default:"System" }}</td>
+          <td style="font-size: 12px; color: var(--text-muted);">{{ run.started_at|date:"Y-m-d H:i:s" }}</td>
+          <td>
+            <a href="{% url 'test_run_detail' run.id %}" class="btn btn-secondary btn-sm">View Report</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">
+            This suite has not been executed yet. Click "Execute Suite" above.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

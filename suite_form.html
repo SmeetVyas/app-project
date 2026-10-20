@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} — API Sentinel{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 20px auto;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">{{ title }}</h2>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <label class="form-label" for="id_project">Project Workspace</label>
+          {{ form.project }}
+          {% if form.project.errors %}<div class="form-errors">{{ form.project.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_name">Suite Name</label>
+          {{ form.name }}
+          {% if form.name.errors %}<div class="form-errors">{{ form.name.errors.0 }}</div>{% endif %}
+          <div class="form-help">e.g. Authentication Flow, Payment Checkout Regression, Gateway Health</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_description">Description (Optional)</label>
+          {{ form.description }}
+          {% if form.description.errors %}<div class="form-errors">{{ form.description.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary">Save Test Suite</button>
+          <a href="{% url 'suite_list' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

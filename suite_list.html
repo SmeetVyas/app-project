@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}Test Suites — API Sentinel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Automated Test Suites</h1>
+    <p class="page-subtitle">Group reusable test cases, define multi-criteria assertions, and execute continuous QA sweeps.</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'suite_create' %}" class="btn btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Create Test Suite
+    </a>
+  </div>
+</div>
+
+<!-- Project Filter -->
+<div class="card" style="margin-bottom: 20px;">
+  <div class="card-body" style="padding: 14px 18px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: center;">
+      <label for="id_project_filter" style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Filter by Project:</label>
+      <select name="project" id="id_project_filter" class="form-select" style="max-width: 250px;" onchange="this.form.submit()">
+        <option value="all">All Projects</option>
+        {% for p in projects %}
+          <option value="{{ p.id }}" {% if selected_project_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Suite Name</th>
+          <th>Project</th>
+          <th>Test Scenarios</th>
+          <th>Pass Rate</th>
+          <th>Latest Execution</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for suite in suites %}
+        {% with latest=suite.get_latest_run %}
+        <tr>
+          <td>
+            <a href="{% url 'suite_detail' suite.id %}" style="font-weight: 600; font-size: 14px;">{{ suite.name }}</a>
+            <div style="font-size: 12px; color: var(--text-muted);">{{ suite.description|truncatechars:65|default:"No description" }}</div>
+          </td>
+          <td>
+            <a href="{% url 'project_detail' suite.project.id %}">{{ suite.project.name }}</a>
+          </td>
+          <td>
+            <span class="badge-status badge-neutral">{{ suite.test_cases.count }} Cases</span>
+          </td>
+          <td>
+            <span style="font-weight: 700; color: {% if suite.get_pass_rate >= 80 %}var(--success){% elif suite.get_pass_rate > 0 %}var(--danger){% else %}var(--text-muted){% endif %};">
+              {{ suite.get_pass_rate }}%
+            </span>
+          </td>
+          <td>
+            {% if latest %}
+              <div>
+                {% if latest.status == 'PASSED' %}
+                  <span class="badge-status badge-passed">PASS</span>
+                {% else %}
+                  <span class="badge-status badge-failed">FAIL</span>
+                {% endif %}
+                <span class="font-mono" style="font-size: 12px; margin-left: 4px;">{{ latest.total_duration_ms|floatformat:1 }}ms</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ latest.started_at|date:"M d, H:i" }}</div>
+            {% else %}
+              <span style="color:var(--text-muted); font-size:12px;">Never Executed</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px;">
+              <a href="{% url 'suite_run' suite.id %}" class="btn btn-primary btn-sm" title="Execute Suite Now">
+                ▶ Run
+              </a>
+              <a href="{% url 'suite_detail' suite.id %}" class="btn btn-secondary btn-sm">Manage</a>
+              <a href="{% url 'suite_update' suite.id %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'suite_delete' suite.id %}" class="btn btn-secondary btn-sm" style="color:var(--danger);">Del</a>
+            </div>
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 36px;">
+            <div class="empty-state" style="padding: 0;">
+              <h3 class="empty-state-title">No Test Suites Configured</h3>
+              <p class="empty-state-desc">Create your first automated test suite to run regression checks on your APIs.</p>
+              <a href="{% url 'suite_create' %}" class="btn btn-primary">Create Test Suite</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

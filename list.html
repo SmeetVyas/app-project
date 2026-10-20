@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}Endpoints — API Sentinel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">API Endpoints</h1>
+    <p class="page-subtitle">Configured routes, safe parameters, encrypted credentials, and expected responses.</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'request_builder' %}" class="btn btn-secondary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+      API Playground
+    </a>
+    <a href="{% url 'endpoint_create' %}" class="btn btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Endpoint
+    </a>
+  </div>
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="card" style="margin-bottom: 20px;">
+  <div class="card-body" style="padding: 14px 18px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+      <input type="text" name="q" value="{{ query }}" placeholder="Search by name or URL..." class="form-input" style="max-width: 280px;" />
+      
+      <select name="method" class="form-select" style="max-width: 140px;">
+        <option value="">All Methods</option>
+        <option value="GET" {% if method_filter == 'GET' %}selected{% endif %}>GET</option>
+        <option value="POST" {% if method_filter == 'POST' %}selected{% endif %}>POST</option>
+        <option value="PUT" {% if method_filter == 'PUT' %}selected{% endif %}>PUT</option>
+        <option value="PATCH" {% if method_filter == 'PATCH' %}selected{% endif %}>PATCH</option>
+        <option value="DELETE" {% if method_filter == 'DELETE' %}selected{% endif %}>DELETE</option>
+        <option value="HEAD" {% if method_filter == 'HEAD' %}selected{% endif %}>HEAD</option>
+      </select>
+
+      <select name="project" class="form-select" style="max-width: 200px;">
+        <option value="all">All Projects</option>
+        {% for p in projects %}
+          <option value="{{ p.id }}" {% if selected_project_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit" class="btn btn-secondary">Filter</button>
+      {% if query or method_filter or selected_project_id %}
+        <a href="{% url 'endpoint_list' %}" class="btn btn-secondary btn-sm" style="color:var(--text-muted);">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- Endpoints Table -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Name / Route</th>
+          <th>Project</th>
+          <th>Expected</th>
+          <th>Timeout</th>
+          <th>Auth / Secret</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ep in endpoints %}
+        <tr>
+          <td>
+            <span class="badge-method badge-{{ ep.method|lower }}">{{ ep.method }}</span>
+          </td>
+          <td>
+            <div style="font-weight: 600;">{{ ep.name }}</div>
+            <div class="font-mono" style="font-size: 11.5px; color: var(--text-muted); max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              {{ ep.url }}
+            </div>
+          </td>
+          <td>
+            <a href="{% url 'project_detail' ep.project.id %}" style="font-size: 12.5px;">{{ ep.project.name }}</a>
+          </td>
+          <td class="font-mono" style="font-size: 12.5px;">HTTP {{ ep.expected_status_code }}</td>
+          <td style="font-size: 12.5px;">{{ ep.timeout_seconds }}s</td>
+          <td>
+            {% with cred=ep.credentials.first %}
+              {% if cred %}
+                <span class="badge-status badge-neutral" title="Encrypted Secret">
+                  🔒 {{ cred.credential_type }}
+                </span>
+              {% else %}
+                <span style="color:var(--text-muted); font-size:12px;">Public</span>
+              {% endif %}
+            {% endwith %}
+          </td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px; align-items: center;">
+              <a href="{% url 'endpoint_test_direct' ep.id %}" class="btn btn-primary btn-sm" title="Run ad-hoc test now">
+                ▶ Test
+              </a>
+              <a href="{% url 'request_builder' %}?from_endpoint={{ ep.id }}" class="btn btn-secondary btn-sm" title="Load into Request Playground">
+                Playground
+              </a>
+              <form method="POST" action="{% url 'endpoint_duplicate' ep.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-sm" title="Duplicate endpoint">Copy</button>
+              </form>
+              <a href="{% url 'endpoint_update' ep.id %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'endpoint_delete' ep.id %}" class="btn btn-secondary btn-sm" style="color:var(--danger);">Del</a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 36px;">
+            <div class="empty-state" style="padding: 0;">
+              <h3 class="empty-state-title">No Endpoints Match Your Criteria</h3>
+              <p class="empty-state-desc">Create a new endpoint or adjust your filter query.</p>
+              <a href="{% url 'endpoint_create' %}" class="btn btn-primary">Create Endpoint</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

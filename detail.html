@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}{{ project.name }} — API Sentinel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <h1 class="page-title">{{ project.name }}</h1>
+      <span class="badge-status badge-neutral">Active Project</span>
+    </div>
+    <p class="page-subtitle">{{ project.description|default:"No description provided." }}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'endpoint_create' %}?project={{ project.id }}" class="btn btn-secondary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Endpoint
+    </a>
+    <a href="{% url 'suite_create' %}?project={{ project.id }}" class="btn btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Create Test Suite
+    </a>
+    <a href="{% url 'project_update' project.id %}" class="btn btn-secondary">Edit Settings</a>
+  </div>
+</div>
+
+<!-- Project Metrics -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-label">Endpoints</span>
+    <span class="stat-value">{{ stats.endpoints_count }}</span>
+    <span class="stat-sub">Configured routes</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Test Suites</span>
+    <span class="stat-value">{{ stats.suites_count }}</span>
+    <span class="stat-sub">Automated suites</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Pass Rate</span>
+    <span class="stat-value" style="color: {% if stats.pass_rate >= 80 %}var(--success){% else %}var(--danger){% endif %};">{{ stats.pass_rate }}%</span>
+    <span class="stat-sub">{{ stats.passed_runs }} passed / {{ stats.failed_runs }} failed</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Avg Latency</span>
+    <span class="stat-value">{{ stats.avg_latency }} <small style="font-size:13px;">ms</small></span>
+    <span class="stat-sub">Recent run duration</span>
+  </div>
+</div>
+
+<!-- Endpoints Table -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
+      Endpoints ({{ endpoints.count }})
+    </h3>
+    <a href="{% url 'endpoint_create' %}?project={{ project.id }}" class="btn btn-secondary btn-sm">+ New Endpoint</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Name</th>
+          <th>Target URL</th>
+          <th>Exp. Status</th>
+          <th>Timeout</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ep in endpoints %}
+        <tr>
+          <td>
+            <span class="badge-method badge-{{ ep.method|lower }}">{{ ep.method }}</span>
+          </td>
+          <td><b>{{ ep.name }}</b></td>
+          <td class="font-mono" style="font-size: 12px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            {{ ep.url }}
+          </td>
+          <td class="font-mono">HTTP {{ ep.expected_status_code }}</td>
+          <td>{{ ep.timeout_seconds }}s</td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              <a href="{% url 'endpoint_test_direct' ep.id %}" class="btn btn-primary btn-sm" title="Run direct test">Run Test</a>
+              <a href="{% url 'request_builder' %}?from_endpoint={{ ep.id }}" class="btn btn-secondary btn-sm" title="Open in Playground">Playground</a>
+              <a href="{% url 'endpoint_update' ep.id %}" class="btn btn-secondary btn-sm">Edit</a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+            No endpoints added yet. Click "+ New Endpoint" to begin.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Test Suites Section -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Test Suites ({{ test_suites.count }})
+    </h3>
+    <a href="{% url 'suite_create' %}?project={{ project.id }}" class="btn btn-secondary btn-sm">+ New Suite</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Suite Name</th>
+          <th>Test Cases</th>
+          <th>Pass Rate</th>
+          <th>Latest Run</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for suite in test_suites %}
+        {% with latest=suite.get_latest_run %}
+        <tr>
+          <td>
+            <a href="{% url 'suite_detail' suite.id %}" style="font-weight: 600;">{{ suite.name }}</a>
+            <div style="font-size:12px; color:var(--text-muted);">{{ suite.description|truncatechars:60 }}</div>
+          </td>
+          <td>{{ suite.test_cases.count }} test cases</td>
+          <td>
+            <b>{{ suite.get_pass_rate }}%</b>
+          </td>
+          <td>
+            {% if latest %}
+              {% if latest.status == 'PASSED' %}
+                <span class="badge-status badge-passed">PASS</span>
+              {% else %}
+                <span class="badge-status badge-failed">FAIL</span>
+              {% endif %}
+              <span style="font-size:11px; color:var(--text-muted);">{{ latest.started_at|date:"M d, H:i" }}</span>
+            {% else %}
+              <span style="color:var(--text-muted); font-size:12px;">Not run yet</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              <a href="{% url 'suite_run' suite.id %}" class="btn btn-primary btn-sm">▶ Execute</a>
+              <a href="{% url 'suite_detail' suite.id %}" class="btn btn-secondary btn-sm">Manage</a>
+            </div>
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr>
+          <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">
+            No test suites created yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} — API Sentinel{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px; margin: 20px auto;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">{{ title }}</h2>
+      <span class="badge-status badge-neutral">Suite: {{ suite.name }}</span>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+
+        <div class="form-group" style="display:none;">
+          {{ form.suite }}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_endpoint">Target Endpoint</label>
+          {{ form.endpoint }}
+          {% if form.endpoint.errors %}<div class="form-errors">{{ form.endpoint.errors.0 }}</div>{% endif %}
+          <div class="form-help">Select the endpoint route to execute during this test scenario.</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="id_name">Test Case Name</label>
+            {{ form.name }}
+            {% if form.name.errors %}<div class="form-errors">{{ form.name.errors.0 }}</div>{% endif %}
+            <div class="form-help">e.g. Verify 200 OK on valid credentials</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_order">Execution Order</label>
+            {{ form.order }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_custom_headers_text">Header Overrides (Optional JSON)</label>
+          {{ form.custom_headers_text }}
+          {% if form.custom_headers_text.errors %}<div class="form-errors">{{ form.custom_headers_text.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_custom_body_override">Request Body Override (Optional)</label>
+          {{ form.custom_body_override }}
+          <div class="form-help">If specified, this payload will replace the endpoint's default body.</div>
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+          {{ form.is_active }}
+          <label for="id_is_active" style="font-size: 13.5px; cursor: pointer; margin: 0;">Active (Execute during suite runs)</label>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px;">
+          <button type="submit" class="btn btn-primary">Save Test Case</button>
+          <a href="{% url 'suite_detail' suite.id %}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}QA Analytics & Telemetry — API Sentinel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Quality Assurance Analytics</h1>
+    <p class="page-subtitle">Aggregated reliability metrics, failure analysis, and endpoint latency telemetry.</p>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: 20px;">
+  <div class="card-body" style="padding: 14px 18px;">
+    <form method="GET" style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+      <select name="project" class="form-select" style="max-width: 220px;" onchange="this.form.submit()">
+        <option value="all">All Projects</option>
+        {% for p in projects %}
+          <option value="{{ p.id }}" {% if selected_project_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="days" class="form-select" style="max-width: 160px;" onchange="this.form.submit()">
+        <option value="7" {% if days_range == 7 %}selected{% endif %}>Last 7 Days</option>
+        <option value="30" {% if days_range == 30 %}selected{% endif %}>Last 30 Days</option>
+        <option value="90" {% if days_range == 90 %}selected{% endif %}>Last 90 Days</option>
+      </select>
+
+      <button type="submit" class="btn btn-secondary">Apply Filter</button>
+    </form>
+  </div>
+</div>
+
+<!-- Key Stat Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-label">Total Test Executions</span>
+    <span class="stat-value">{{ total_runs }}</span>
+    <span class="stat-sub">In selected {{ days_range }}-day window</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Platform Pass Rate</span>
+    <span class="stat-value" style="color: {% if pass_rate >= 80 %}var(--success){% elif pass_rate > 0 %}var(--danger){% else %}var(--text-main){% endif %};">
+      {{ pass_rate }}%
+    </span>
+    <span class="stat-sub">{{ passed_runs }} passed / {{ failed_runs }} failed</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Mean Latency</span>
+    <span class="stat-value">{{ avg_latency }} <small style="font-size:14px;">ms</small></span>
+    <span class="stat-sub">Across all endpoints</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Recorded Failures</span>
+    <span class="stat-value" style="color: {% if failed_runs > 0 %}var(--danger){% else %}var(--success){% endif %};">
+      {{ failed_runs }}
+    </span>
+    <span class="stat-sub">Requiring remediation</span>
+  </div>
+</div>
+
+<!-- Latency Timeline Chart -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h3 class="card-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Execution Duration Timeline
+    </h3>
+  </div>
+  <div class="card-body" style="height: 260px;">
+    {% if timeline_durations %}
+      <canvas id="analyticsTimelineChart"></canvas>
+    {% else %}
+      <div class="empty-state" style="padding: 40px 0;">
+        <p style="color:var(--text-muted); font-size:13px;">No runs recorded in this date range.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Two-Column Breakdown: Slowest Endpoints & Frequent Failures -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+  <!-- Slowest Endpoints Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Top Latency Bottlenecks
+      </h3>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Endpoint Name</th>
+            <th>Avg Latency</th>
+            <th>Checks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in slowest_endpoints %}
+          <tr>
+            <td>
+              <span class="badge-method badge-{{ item.endpoint__method|lower }}">{{ item.endpoint__method }}</span>
+              <span style="font-weight: 500; margin-left: 4px;">{{ item.name }}</span>
+            </td>
+            <td class="font-mono" style="font-weight: 600; color: {% if item.avg_latency > 800 %}var(--danger){% elif item.avg_latency > 350 %}var(--warning){% else %}var(--text-main){% endif %};">
+              {{ item.avg_latency|floatformat:1 }}ms
+            </td>
+            <td style="color:var(--text-muted); font-size:12px;">{{ item.total_executions }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">No latency telemetry recorded.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Frequent Failures Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        Most Frequent Failure Reasons
+      </h3>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Failing Test</th>
+            <th>Failure Reason / Diagnostic</th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fail in frequent_failures %}
+          <tr>
+            <td><b>{{ fail.name }}</b></td>
+            <td style="font-size: 12px; color: var(--danger);">{{ fail.error_message|truncatechars:70|default:"Assertion mismatch" }}</td>
+            <td>
+              <span class="badge-status badge-failed">{{ fail.fail_count }}x</span>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">No failure patterns recorded in this range.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('analyticsTimelineChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const labels = {{ timeline_labels|safe }};
+    const durations = {{ timeline_durations|safe }};
+    if (labels.length === 0) return;
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? '#1e293b' : '#f1f5f9';
+
+    new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Total Run Latency (ms)',
+          data: durations,
+          backgroundColor: '#3b82f6',
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } },
+          y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } }
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

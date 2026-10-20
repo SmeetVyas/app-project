@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Delete {{ suite.name }} — API Sentinel{% endblock %}
+
+{% block content %}
+<div style="max-width: 480px; margin: 40px auto;">
+  <div class="card" style="border-color: var(--danger-border);">
+    <div class="card-header" style="background-color: var(--danger-bg);">
+      <h2 class="card-title" style="color: var(--danger);">Confirm Suite Deletion</h2>
+    </div>
+    <div class="card-body">
+      <p style="margin-bottom: 14px;">
+        Are you sure you want to delete test suite <b>{{ suite.name }}</b>?
+      </p>
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+        All contained test cases, assertions, and execution history links will be deleted.
+      </div>
+
+      <form method="POST">
+        {% csrf_token %}
+        <div style="display: flex; gap: 10px;">
+          <button type="submit" class="btn btn-danger">Yes, Delete Suite</button>
+          <a href="{% url 'suite_detail' suite.id %}" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

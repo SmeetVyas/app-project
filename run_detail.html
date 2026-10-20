@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block title %}Run #{{ test_run.id }} Results — API Sentinel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <h1 class="page-title">Test Run #{{ test_run.id }}</h1>
+      {% if test_run.status == 'PASSED' %}
+        <span class="badge-status badge-passed" style="font-size: 13px; padding: 4px 10px;">PASSED</span>
+      {% else %}
+        <span class="badge-status badge-failed" style="font-size: 13px; padding: 4px 10px;">FAILED</span>
+      {% endif %}
+    </div>
+    <p class="page-subtitle">
+      Project: <b>{{ test_run.project.name }}</b> &nbsp;|&nbsp;
+      Suite: <b>{{ test_run.suite.name|default:"Direct Test" }}</b> &nbsp;|&nbsp;
+      Started: {{ test_run.started_at|date:"Y-m-d H:i:s" }} UTC
+    </p>
+  </div>
+  <div class="page-actions">
+    {% if previous_run %}
+      <a href="{% url 'regression_compare' %}?base={{ previous_run.id }}&comp={{ test_run.id }}" class="btn btn-secondary" title="Compare with Run #{{ previous_run.id }}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Compare Regressions
+      </a>
+    {% endif %}
+    <a href="{% url 'export_test_run_csv' test_run.id %}" class="btn btn-secondary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      CSV
+    </a>
+    <a href="{% url 'export_test_run_pdf' test_run.id %}" class="btn btn-secondary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      PDF Report
+    </a>
+    <a href="{% url 'test_run_rerun' test_run.id %}" class="btn btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      Rerun Suite
+    </a>
+  </div>
+</div>
+
+<!-- Run Metrics Summary -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-label">Total Tests</span>
+    <span class="stat-value">{{ test_run.total_tests }}</span>
+    <span class="stat-sub">Cases executed</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Passed</span>
+    <span class="stat-value" style="color: var(--success);">{{ test_run.passed_tests }}</span>
+    <span class="stat-sub">Met all assertions</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Failed</span>
+    <span class="stat-value" style="color: {% if test_run.failed_tests > 0 %}var(--danger){% else %}var(--text-main){% endif %};">{{ test_run.failed_tests }}</span>
+    <span class="stat-sub">Failed assertions/errors</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Execution Time</span>
+    <span class="stat-value">{{ test_run.total_duration_ms|floatformat:1 }} <small style="font-size:14px;">ms</small></span>
+    <span class="stat-sub">Total elapsed runtime</span>
+  </div>
+</div>
+
+<!-- Detailed Test Case Results Breakdown -->
+<div style="margin-bottom: 30px;">
+  <h2 style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 14px;">
+    Test Outcomes & Assertion Telemetry
+  </h2>
+
+  {% for res in results %}
+  <div class="card" style="margin-bottom: 16px; border-left: 4px solid {% if res.passed %}var(--success){% else %}var(--danger){% endif %};">
+    <div class="card-header" style="background-color: var(--bg-card-header);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        {% if res.passed %}
+          <span class="badge-status badge-passed">PASS</span>
+        {% else %}
+          <span class="badge-status badge-failed">FAIL</span>
+        {% endif %}
+        
+        <h3 class="card-title" style="margin: 0;">{{ res.name }}</h3>
+
+        {% if res.endpoint %}
+          <span class="badge-method badge-{{ res.endpoint.method|lower }}">{{ res.endpoint.method }}</span>
+          <span class="font-mono" style="font-size: 12px; color: var(--text-muted);">{{ res.endpoint.url }}</span>
+        {% endif %}
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="font-mono" style="font-size: 13px; font-weight: 600;">
+          HTTP {{ res.status_code|default:"ERR" }}
+        </span>
+        <span class="font-mono" style="font-size: 12px; color: var(--text-muted);">
+          {{ res.elapsed_ms|floatformat:1 }}ms
+        </span>
+      </div>
+    </div>
+
+    <div class="card-body">
+      {% if not res.passed and res.error_message %}
+        <div style="background-color: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 14px;">
+          <b>Failure Reason:</b> {{ res.error_message }}
+        </div>
+      {% endif %}
+
+      <!-- Assertion Evaluations Table -->
+      {% if res.assertion_details %}
+        <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">
+          Assertion Rule Evaluations ({{ res.assertion_details|length }})
+        </div>
+        <div class="table-responsive" style="margin-bottom: 14px;">
+          <table class="table" style="font-size: 12.5px;">
+            <thead>
+              <tr style="background: none;">
+                <th>Evaluation</th>
+                <th>Type</th>
+                <th>Target</th>
+                <th>Expected</th>
+                <th>Actual</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in res.assertion_details %}
+              <tr>
+                <td>
+                  {% if a.passed %}
+                    <span class="badge-status badge-passed" style="font-size: 10px;">PASS</span>
+                  {% else %}
+                    <span class="badge-status badge-failed" style="font-size: 10px;">FAIL</span>
+                  {% endif %}
+                </td>
+                <td>{{ a.assertion_type }}</td>
+                <td class="font-mono">{{ a.target_property|default:"-" }}</td>
+                <td class="font-mono" style="color: var(--primary);">{{ a.expected_value }}</td>
+                <td class="font-mono" style="color: {% if a.passed %}var(--success){% else %}var(--danger){% endif %};">
+                  {{ a.actual_value|truncatechars:60 }}
+                </td>
+                <td style="font-size: 12px; color: var(--text-muted);">{{ a.message }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
+      <!-- Response Body Snippet Details Toggle -->
+      {% if res.response_body_preview %}
+        <details style="margin-top: 10px;">
+          <summary style="font-size: 12px; font-weight: 600; color: var(--primary); cursor: pointer;">
+            View Response Body Snippet
+          </summary>
+          <pre class="code-block" style="margin-top: 8px; max-height: 200px;">{{ res.response_body_preview }}</pre>
+        </details>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+    <div class="card">
+      <div class="card-body empty-state">
+        <p>No results recorded for this execution.</p>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

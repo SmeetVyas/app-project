@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}API Documentation — API Sentinel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">API Sentinel Internal REST Endpoints</h1>
+    <p class="page-subtitle">Technical documentation for integrating, triggering, and exporting results from API Sentinel programmatically.</p>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 240px 1fr; gap: 24px;">
+  <!-- Left Navigation Index -->
+  <div>
+    <div class="card" style="position: sticky; top: 80px;">
+      <div class="card-header">
+        <h4 style="font-size: 13px; font-weight: 600;">Endpoint Index</h4>
+      </div>
+      <div class="card-body" style="padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
+        <a href="#endpoint-send">POST /endpoints/builder/send/</a>
+        <a href="#endpoint-test">GET /endpoints/{id}/test/</a>
+        <a href="#suite-run">GET /testing/suites/{id}/run/</a>
+        <a href="#monitor-trigger">POST /monitoring/{id}/trigger/</a>
+        <a href="#report-csv">GET /analytics/reports/run/{id}/csv/</a>
+        <a href="#report-pdf">GET /analytics/reports/run/{id}/pdf/</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Content Documentation -->
+  <div>
+    <!-- 1. Send API -->
+    <div class="card" id="endpoint-send">
+      <div class="card-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge-method badge-post">POST</span>
+          <span class="font-mono" style="font-size: 14px; font-weight: 600;">/endpoints/builder/send/</span>
+        </div>
+        <span class="badge-status badge-neutral">Session Auth + CSRF</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 14px;">
+          Executes an outbound HTTP request safely with pre-flight SSRF protection, strict timeouts, and response body size limits.
+        </p>
+
+        <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Request Payload (JSON)</h4>
+        <pre class="code-block" style="margin-bottom: 16px;">{
+  "url": "https://jsonplaceholder.typicode.com/posts/1",
+  "method": "GET",
+  "headers": {
+    "Accept": "application/json"
+  },
+  "params": {
+    "filter": "active"
+  },
+  "body": "",
+  "timeout": 10
+}</pre>
+
+        <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Sample 200 OK Response</h4>
+        <pre class="code-block">{
+  "status_code": 200,
+  "elapsed_ms": 112.4,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "is_json": true,
+  "parsed_json": {
+    "userId": 1,
+    "id": 1,
+    "title": "delectus aut autem"
+  },
+  "error": null,
+  "truncated": false
+}</pre>
+      </div>
+    </div>
+
+    <!-- 2. Direct Test -->
+    <div class="card" id="endpoint-test">
+      <div class="card-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge-method badge-get">GET</span>
+          <span class="font-mono" style="font-size: 14px; font-weight: 600;">/endpoints/{id}/test/</span>
+        </div>
+        <span class="badge-status badge-neutral">Login Required</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 12px;">
+          Directly executes a saved endpoint using its stored configuration and decrypted credentials, persisting the result and redirecting to the detailed Test Run report.
+        </p>
+        <div style="font-size: 12.5px; color: var(--text-muted);">
+          <b>Parameters:</b> <code>id</code> (integer) — The primary key of the Endpoint.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Suite Run -->
+    <div class="card" id="suite-run">
+      <div class="card-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge-method badge-get">GET</span>
+          <span class="font-mono" style="font-size: 14px; font-weight: 600;">/testing/suites/{id}/run/</span>
+        </div>
+        <span class="badge-status badge-neutral">Login Required</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 12px;">
+          Executes all active test cases in the specified Test Suite sequentially, evaluates every assertion rule (status codes, JSON paths, latency thresholds), computes aggregated metrics, and redirects to the TestRun report.
+        </p>
+      </div>
+    </div>
+
+    <!-- 4. Monitor Trigger -->
+    <div class="card" id="monitor-trigger">
+      <div class="card-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge-method badge-post">POST</span>
+          <span class="font-mono" style="font-size: 14px; font-weight: 600;">/monitoring/{id}/trigger/</span>
+        </div>
+        <span class="badge-status badge-neutral">CSRF Protected</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size: 13.5px; color: var(--text-muted);">
+          Manually forces an immediate health check ping for a configured MonitorSchedule, updating uptime metrics and recording an audit log entry.
+        </p>
+      </div>
+    </div>
+
+    <!-- 5. Reports Export -->
+    <div class="card" id="report-csv">
+      <div class="card-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge-method badge-get">GET</span>
+          <span class="font-mono" style="font-size: 14px; font-weight: 600;">/analytics/reports/run/{id}/csv/</span>
+        </div>
+        <span class="badge-status badge-neutral">Attachment</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size: 13.5px; color: var(--text-muted);">
+          Generates and streams a sanitized CSV report containing test scenario outcomes, HTTP codes, latency durations, and failure reasons.
+        </p>
+      </div>
+    </div>
+
+    <div class="card" id="report-pdf">
+      <div class="card-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge-method badge-get">GET</span>
+          <span class="font-mono" style="font-size: 14px; font-weight: 600;">/analytics/reports/run/{id}/pdf/</span>
+        </div>
+        <span class="badge-status badge-neutral">PDF Binary</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size: 13.5px; color: var(--text-muted);">
+          Renders a professional, audit-ready PDF document with ReportLab, including project summary cards, pass/fail totals, duration tables, and confidentiality notices.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
